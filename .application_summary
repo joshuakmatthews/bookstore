@@ -1,0 +1,5 @@
+{
+  "ProjectOverviewURL": "https://07e8ed6ftrial.launchpad.cfapps.us10.hana.ondemand.com/lcapbookstore.bookstoreLaunchpad-1.0.0",
+  "DeployedUTCTime": "2023-04-25T19:14:49.915Z",
+  "ApplicationLogURL": "https://logs.cf.us10-001.hana.ondemand.com/app/dashboards#/view/Overview?_g=(filters:!((query:(match_phrase:(component_name:bookstore-srv)))))"
+}

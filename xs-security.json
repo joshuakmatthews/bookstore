@@ -1,0 +1,33 @@
+{
+  "scopes": [
+    {
+      "name": "$XSAPPNAME.Read",
+      "description": "Read"
+    },
+    {
+      "name": "$XSAPPNAME.Write",
+      "description": "Write"
+    }
+  ],
+  "attributes": [],
+  "role-templates": [
+    {
+      "name": "Read",
+      "description": "Read only access",
+      "scope-references": [
+        "$XSAPPNAME.Read"
+      ],
+      "attribute-references": []
+    },
+    {
+      "name": "Write",
+      "description": "Read and Write Access",
+      "scope-references": [
+        "$XSAPPNAME.Write"
+      ],
+      "attribute-references": []
+    }
+  ],
+  "xsappname": "bookstore",
+  "tenant-mode": "dedicated"
+}

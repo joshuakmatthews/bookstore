@@ -1,0 +1,57 @@
+[
+	{
+		"Name": "any",
+		"Description": "any",
+		"defaultPrivilege": {
+			"IsSimple": true,
+			"SimplePrivilege": 2
+		}
+	},
+	{
+		"Name": "authenticated-user",
+		"Description": "authenticated-user",
+		"defaultPrivilege": {
+			"IsSimple": true,
+			"SimplePrivilege": 2
+		}
+	},
+	{
+		"Name": "system-user",
+		"Description": "system-user",
+		"defaultPrivilege": {
+			"IsSimple": true,
+			"SimplePrivilege": 2
+		}
+	},
+	{
+		"Name": "Read",
+		"Description": "Read only access",
+		"defaultPrivilege": {
+			"IsSimple": false,
+			"SimplePrivilege": 2,
+			"IndividualPrivilege": {
+				"READ": true,
+				"CREATE": false,
+				"UPDATE": false,
+				"DELETE": false,
+				"ALL": false
+			},
+			"ConditionalPrivileges": []
+		}
+	},
+	{
+		"Name": "Write",
+		"Description": "Read and Write Access",
+		"defaultPrivilege": {
+			"IsSimple": false,
+			"SimplePrivilege": 3,
+			"IndividualPrivilege": {
+				"READ": true,
+				"CREATE": true,
+				"UPDATE": true,
+				"DELETE": true,
+				"ALL": true
+			}
+		}
+	}
+]

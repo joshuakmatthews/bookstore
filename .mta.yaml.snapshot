@@ -1,0 +1,205 @@
+_schema-version: '3.1'
+ID: bookstore
+version: 1.0.0
+description: A simple CAP project.
+parameters:
+  deploy_mode: html5-repo
+  enable-parallel-deployments: true
+build-parameters:
+  before-all:
+    - builder: custom
+      commands:
+        - rm -rf build/ui-deployer
+        - mkdir -p build/ui-deployer
+        - rm -rf build/dist
+        - mkdir -p build/dist
+    - builder: custom
+      commands:
+        - npm install --production
+        - >-
+          bash -c "cds -v | grep 'cds-dk' || npm i --production --no-save
+          @sap/cds-dk @sap/mdk-tools"
+        - bash -c "export PATH=$PATH:$(pwd)/node_modules/.bin"
+        - cds build --production
+modules:
+  - name: bookstore-bookstore.bookstore
+    type: html5
+    path: app/bookstore.bookstore
+    build-parameters:
+      builder: custom
+      commands:
+        - rm -rf dist-zip dist
+        - >-
+          npx -p @ui5/cli@^3.0.0 ui5 build --dest dist
+          --include-task=generateManifestBundle
+          --include-task=generateCachebusterInfo
+        - mkdir dist-zip
+        - bash -c "cd dist && npx bestzip ../dist-zip/bookstorebookstore.zip *"
+      _artifactName: bookstorebookstore.zip
+      supported-platforms: []
+      build-result: dist-zip
+  - name: bookstore-db-deployer
+    type: hdb
+    path: gen/db
+    parameters:
+      buildpack: nodejs_buildpack
+    build-parameters:
+      builder: npm
+      ignore:
+        - node_modules
+        - package-lock.json
+    requires:
+      - name: bookstore-service-uaa
+      - name: bookstore-service-db
+  - name: bookstore-srv
+    type: nodejs
+    path: gen/srv
+    parameters:
+      memory: 256MB
+    provides:
+      - name: srv-api
+        properties:
+          srv-url: ${default-url}
+    build-parameters:
+      builder: npm
+      ignore:
+        - node_modules
+        - package-lock.json
+    requires:
+      - name: bookstore-service-uaa
+      - name: bookstore-service-db
+      - name: bookstore-service-destination
+      - name: bookstore-service-metadata
+      - name: bookstore-service-connectivity
+      - name: bookstore-service-logs
+  - name: bookstore-aux-destinations
+    type: com.sap.application.content
+    parameters:
+      content:
+        subaccount:
+          existing_destinations_policy: update
+          destinations:
+            - Authentication: OAuth2UserTokenExchange
+              Name: bookstore-service-uaa
+              ServiceInstanceName: bookstore-uaa
+              ServiceKeyName: bookstore-uaa-key
+              sap.cloud.service: lcap.bookstore
+            - Authentication: OAuth2UserTokenExchange
+              Name: bookstore-app-srv
+              TokenServiceInstanceName: bookstore-uaa
+              TokenServiceKeyName: bookstore-uaa-key
+              URL: ~{srv-api/srv-url}
+              sap.cloud.service: lcap.bookstore
+            - Name: bookstore-service-html5-apps-repo-host
+              ServiceInstanceName: bookstore-html5-apps-repo-host
+              ServiceKeyName: bookstore-html5-apps-repo-host-key
+              sap.cloud.service: lcap.bookstore
+    build-parameters:
+      no-source: true
+    requires:
+      - name: bookstore-service-uaa
+        parameters:
+          service-key:
+            name: bookstore-uaa-key
+      - name: srv-api
+      - name: bookstore-service-html5-apps-repo-host
+        parameters:
+          service-key:
+            name: bookstore-html5-apps-repo-host-key
+      - name: bookstore-service-destination
+        parameters:
+          content-target: true
+  - name: bookstore-launchpad
+    type: html5
+    path: build/launchpad
+    build-parameters:
+      builder: custom
+      commands:
+        - npm install
+        - >-
+          npx -p @ui5/cli@^3.0.0 ui5 build --dest dist
+          --include-task=generateManifestBundle
+          --include-task=generateCachebusterInfo
+        - bash -c "cd dist && npx bestzip ../../../build/dist/launchpad.zip *"
+        - rm -rf dist
+      _artifactName: launchpad.zip
+      supported-platforms: []
+      build-result: ../../build/dist
+  - name: bookstore-aux-ui-deployer
+    type: com.sap.application.content
+    path: build/ui-deployer
+    build-parameters:
+      build-result: resources
+      requires:
+        - name: bookstore-bookstore.bookstore
+          artifacts:
+            - bookstorebookstore.zip
+          target-path: resources
+        - name: bookstore-launchpad
+          artifacts:
+            - launchpad.zip
+          target-path: resources
+    requires:
+      - name: bookstore-service-html5-apps-repo-host
+        parameters:
+          content-target: true
+resources:
+  - type: org.cloudfoundry.managed-service
+    name: bookstore-service-uaa
+    parameters:
+      service: xsuaa
+      service-plan: application
+      service-name: bookstore-uaa
+      path: xs-security.json
+      config:
+        xsappname: bookstore-${space}
+        role-collections:
+          - description: Read only access
+            name: bookstore-Read-${space}
+            role-template-references:
+              - $XSAPPNAME.Read
+          - description: Read and Write Access
+            name: bookstore-Write-${space}
+            role-template-references:
+              - $XSAPPNAME.Write
+  - type: org.cloudfoundry.managed-service
+    name: bookstore-service-db
+    parameters:
+      service: hana
+      service-plan: hdi-shared
+      service-name: bookstore-db
+  - type: org.cloudfoundry.managed-service
+    name: bookstore-service-destination
+    parameters:
+      service: destination
+      service-plan: lite
+      service-name: bookstore-destination
+      config:
+        HTML5Runtime_enabled: true
+        version: 1.0.0
+  - type: org.cloudfoundry.user-provided-service
+    name: bookstore-service-metadata
+    parameters:
+      service: metadata
+      service-plan: standard
+      service-name: bookstore-metadata
+      config:
+        default-domain: ${default-domain}
+  - type: org.cloudfoundry.managed-service
+    name: bookstore-service-connectivity
+    parameters:
+      service: connectivity
+      service-plan: lite
+      service-name: bookstore-connectivity
+  - type: org.cloudfoundry.managed-service
+    name: bookstore-service-logs
+    parameters:
+      service: application-logs
+      service-plan: lite
+      service-name: bookstore-logs
+  - type: org.cloudfoundry.managed-service
+    name: bookstore-service-html5-apps-repo-host
+    parameters:
+      service: html5-apps-repo
+      service-plan: app-host
+      service-name: bookstore-html5-apps-repo-host
